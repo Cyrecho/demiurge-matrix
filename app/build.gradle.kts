@@ -22,8 +22,8 @@ android {
         applicationId = "com.zhiwo.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 68
-        versionName = "1.3.8"
+        versionCode = 69
+        versionName = "1.3.9"
         vectorDrawables { useSupportLibrary = true }
     }
 

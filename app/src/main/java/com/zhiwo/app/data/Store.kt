@@ -444,7 +444,22 @@ class Store private constructor(context: Context) {
                 val idMap = HashMap<Long, String>(s.messages.size * 2)
                 s.messages.forEach { m -> idMap[m.oldId] = UUID.randomUUID().toString() }
 
-                s.messages.forEachIndexed { index, m ->
+                // 按 parent 链做一次拓扑排序再写库。
+                // 官方包里的数组顺序是能用的，但不该依赖它 —— 时间戳一旦按错的顺序生成，
+                // 树视图、deepestLeaf 这些依赖 created_at 的地方都会跟着乱。
+                val ordered = ArrayList<DeepSeekZipImporter.ImportedMessage>(s.messages.size)
+                val byParent = s.messages.groupBy { it.parentOldId }
+                val visited = HashSet<Long>(s.messages.size * 2)
+                fun walk(m: DeepSeekZipImporter.ImportedMessage) {
+                    if (!visited.add(m.oldId)) return
+                    ordered.add(m)
+                    byParent[m.oldId]?.forEach { walk(it) }
+                }
+                s.messages.filter { it.parentOldId == null }.forEach { walk(it) }
+                // 没接在链上的（脏数据）也补进来，别丢消息
+                s.messages.forEach { if (visited.add(it.oldId)) ordered.add(it) }
+
+                ordered.forEachIndexed { index, m ->
                     val newId = idMap[m.oldId] ?: return@forEachIndexed
                     val attachments = m.fileNames.map { "miss|${m.oldId}|$it" }
                     db.insert("message", null, ContentValues().apply {
@@ -463,7 +478,7 @@ class Store private constructor(context: Context) {
                 }
 
                 val leaf = s.leafOldId?.let { idMap[it] }
-                    ?: s.messages.lastOrNull()?.oldId?.let { idMap[it] }
+                    ?: ordered.lastOrNull()?.oldId?.let { idMap[it] }
                 if (leaf != null) {
                     db.update(
                         "conversation",
