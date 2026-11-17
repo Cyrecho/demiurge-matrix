@@ -571,6 +571,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** 抽屉里按内容搜索：返回正文命中的会话。 */
+    suspend fun searchConversationIds(query: String): Set<String> =
+        withContext(Dispatchers.IO) { store.conversationIdsMatching(query) }
+
+    /** 设置里改完名字后调用：把主实例的标题同步过去。 */
+    fun applyMasterName() {
+        runCatching {
+            val name = settings.masterName
+            val primary = store.masterInstances().firstOrNull { it.isPrimary } ?: return@runCatching
+            if (primary.title != name) {
+                store.rename(primary.id, name)
+                if (convId == primary.id) reload()
+                refreshList()
+                refreshMasters()
+            }
+        }
+    }
+
     /** 进入某个知识库的助手：同一套机制，作用域收到这一个库。 */
     fun openKbMaster(kbId: String) {
         if (_chat.value.streaming) stop()

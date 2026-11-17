@@ -362,6 +362,8 @@ fun SettingsScreen(
                     settings.effort = effort
                     settings.thinkingStyle = thinkingStyle
                     settings.masterName = masterName
+                    // 名字改了要同步到抽屉里那条主实例
+                    vm.applyMasterName()
                     settings.systemPrompt = prompt
                     savedAt = System.currentTimeMillis()
                 },

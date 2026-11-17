@@ -30,10 +30,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,11 +76,24 @@ fun HistoryDrawer(
     onLongPress: (Conversation) -> Unit,
     onOpenImport: () -> Unit,
     onOrganize: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    searchContent: suspend (String) -> Set<String>
 ) {
     var query by remember { mutableStateOf("") }
+    var contentHits by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    val filtered = remember(conversations, query, selectedKbId) {
+    // 输完停一下再查正文，别每敲一个字扫一遍库
+    LaunchedEffect(query) {
+        val q = query.trim()
+        if (q.length >= 2) {
+            delay(220)
+            contentHits = runCatching { searchContent(q) }.getOrDefault(emptySet())
+        } else {
+            contentHits = emptySet()
+        }
+    }
+
+    val filtered = remember(conversations, query, selectedKbId, contentHits) {
         val q = query.trim()
         conversations.filter { conv ->
             val kbOk = when (selectedKbId) {
@@ -86,7 +101,10 @@ fun HistoryDrawer(
                 KB_UNCLASSIFIED -> conv.kbId == null
                 else -> conv.kbId == selectedKbId
             }
-            val qOk = q.isEmpty() || conv.title.contains(q, ignoreCase = true)
+            // 标题命中，或者正文里翻到了
+            val qOk = q.isEmpty() ||
+                conv.title.contains(q, ignoreCase = true) ||
+                conv.id in contentHits
             kbOk && qOk
         }
     }

@@ -481,6 +481,21 @@ class Store private constructor(context: Context) {
         return count
     }
 
+    /** 在消息正文里搜，返回命中的会话 id。抽屉搜索用。 */
+    fun conversationIdsMatching(query: String): Set<String> {
+        val q = query.trim()
+        if (q.length < 2) return emptySet()
+        val out = HashSet<String>()
+        val pattern = "%" + q.replace("%", "").replace("_", "") + "%"
+        runCatching {
+            helper.readableDatabase.rawQuery(
+                "SELECT DISTINCT conv_id FROM message WHERE content LIKE ? LIMIT 300",
+                arrayOf(pattern)
+            ).use { c -> while (c.moveToNext()) out.add(c.getString(0)) }
+        }
+        return out
+    }
+
     // ---------------- 映射 ----------------
 
     private fun Cursor.toConversation(): Conversation {

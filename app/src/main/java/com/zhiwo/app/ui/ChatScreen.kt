@@ -351,7 +351,8 @@ fun ChatScreen(
                     onOpenSettings = {
                         scope.launch { drawerState.close() }
                         onOpenSettings()
-                    }
+                    },
+                    searchContent = { q -> vm.searchConversationIds(q) }
                 )
             }
         }
@@ -841,31 +842,38 @@ fun ChatScreen(
                     if (kbs.isEmpty()) {
                         Text("还没有知识库", fontSize = 13.sp)
                     } else {
-                        kbs.forEach { kb ->
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        scopeSelection = if (kb.id in scopeSelection) {
-                                            scopeSelection - kb.id
-                                        } else {
-                                            scopeSelection + kb.id
+                        // 库多了要能滚
+                        Column(
+                            Modifier
+                                .heightIn(max = 340.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            kbs.forEach { kb ->
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            scopeSelection = if (kb.id in scopeSelection) {
+                                                scopeSelection - kb.id
+                                            } else {
+                                                scopeSelection + kb.id
+                                            }
                                         }
-                                    }
-                                    .padding(vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = kb.id in scopeSelection,
-                                    onCheckedChange = { checked ->
-                                        scopeSelection = if (checked) {
-                                            scopeSelection + kb.id
-                                        } else {
-                                            scopeSelection - kb.id
+                                        .padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = kb.id in scopeSelection,
+                                        onCheckedChange = { checked ->
+                                            scopeSelection = if (checked) {
+                                                scopeSelection + kb.id
+                                            } else {
+                                                scopeSelection - kb.id
+                                            }
                                         }
-                                    }
-                                )
-                                Text(kb.name, fontSize = 13.5.sp)
+                                    )
+                                    Text(kb.name, fontSize = 13.5.sp)
+                                }
                             }
                         }
                     }
